@@ -40,6 +40,9 @@
 #include <linux/poll.h>         /* poll_table, etc. */
 #include <asm/uaccess.h>        /* copy_to_user, copy_from_user */
 #include <linux/dma-buf.h>
+// #include <linux/dma-mapping.h>
+// #include <linux/dma-direction.h>
+#include <linux/pci_regs.h>
 #include "driverversion.h"
 
 #include "pcieportal.h"
@@ -356,7 +359,11 @@ static int portal_mmap(struct file *filp, struct vm_area_struct *vma)
                 //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
                 off = this_portal->extra->dma_handle;
         }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,3,0)
         vma->vm_flags |= VM_IO;
+#else
+        vm_flags_set(vma, VM_IO);
+#endif
         if (io_remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
              vma->vm_end - vma->vm_start, vma->vm_page_prot))
                 return -EAGAIN;
@@ -424,7 +431,11 @@ static int portal_dma_pcis_mmap(struct file *filp, struct vm_area_struct *vma)
         vma->vm_pgoff = off >> PAGE_SHIFT;
         //vma->vm_flags |= VM_IO | VM_RESERVED;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,3,0)
         vma->vm_flags |= VM_IO;
+#else
+        vm_flags_set(vma, VM_IO);
+#endif
         if (io_remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
                                vma->vm_end - vma->vm_start, vma->vm_page_prot))
                 return -EAGAIN;
@@ -590,8 +601,13 @@ printk("[%s:%d]\n", __FUNCTION__, __LINE__);
                         printk("config block ID %x\n", ioread32(this_board->bar2io + 0x3000));
                 }
                 /* set DMA mask */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
                 if (pci_set_dma_mask(dev, DMA_BIT_MASK(48))) {
-                        printk(KERN_ERR "%s: pci_set_dma_mask failed for 48-bit DMA\n", DEV_NAME);
+                        printk(KERN_ERR "%s: pci_dma_set_mask failed for 48-bit DMA\n", DEV_NAME);
+#else
+                if (dma_set_mask(&dev->dev, DMA_BIT_MASK(48))) {
+                        printk(KERN_ERR "%s: dma_set_mask failed for 48-bit DMA\n", DEV_NAME);
+#endif
                         err = -EIO;
                         goto BARS_MAPPED_label;
                 }
@@ -839,7 +855,7 @@ static
 
 MODULE_DEVICE_TABLE(pci, pcieportal_id_table);
 
-static pci_ers_result_t pcieportal_error_detected(struct pci_dev *pdev, enum pci_channel_state error)
+static pci_ers_result_t pcieportal_error_detected(struct pci_dev *pdev, pci_channel_state_t error)
 {
         printk(KERN_ERR "%s:%s: pcie error %d\n", DEV_NAME, __FUNCTION__, error);
         return PCI_ERS_RESULT_CAN_RECOVER;
@@ -904,7 +920,12 @@ static int pcieportal_init(void)
         int status;
 
 printk("[%s:%d]\n", __FUNCTION__, __LINE__);
-        pcieportal_class = class_create(THIS_MODULE, "Connectal");
+        #if LINUX_VERSION_CODE < KERNEL_VERSION(6,4,0)
+            pcieportal_class = class_create(THIS_MODULE, "Connectal");
+        #else
+            pcieportal_class = class_create("Connectal");
+        #endif
+
         if (IS_ERR(pcieportal_class)) {
                 printk(KERN_ERR "%s: failed to create class Connectal\n", DEV_NAME);
                 return PTR_ERR(pcieportal_class);

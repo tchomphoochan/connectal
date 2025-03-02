@@ -62,3 +62,7 @@ kc705g2
 ac701g2
 *.ltx
 zedboard_ubuntu
+driverversion.h
+*.o
+*.d
+*.mod

@@ -75,7 +75,6 @@ uninstall:
 	    rm -vf $(MODULES_LOAD_D_DIR)/`basename $$fname` ; \
 	done;
 	(cd drivers/pcieportal; make uninstall)
-	make -C pcie/connectalutil uninstall
 	for fname in $(UDEV_RULES) ; do \
 	    rm -f $(UDEV_RULES_DIR)/$$fname ; \
 	done
@@ -117,7 +116,7 @@ ifeq ($(shell uname), Darwin)
 	port install asciidoc
 	easy_install ply
 else
-	if [ -f /usr/bin/yum ] ; then yum install gmp strace python-argparse python-ply python-gevent; else apt-get install libgmp10 strace python-ply python-gevent; fi
+	if [ -f /usr/bin/yum ] ; then yum install gmp strace python-argparse python-ply python3-gevent; else apt-get install libgmp10 strace python-ply python3-gevent; fi
 	if [ -f /usr/lib/x86_64-linux-gnu/libgmp.so ] ; then ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so /usr/lib/x86_64-linux-gnu/libgmp.so.3 ; fi
 	if [ ! -f /usr/lib64/libgmp.so.3 ] && [ -f /usr/lib64/libgmp.so.10 ] ; then ln -s /usr/lib64/libgmp.so.10 /usr/lib64/libgmp.so.3; fi
 endif

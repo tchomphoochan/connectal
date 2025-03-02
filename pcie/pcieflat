@@ -23,7 +23,7 @@
 from __future__ import print_function
 
 import fcntl, glob, json, struct, subprocess, sys
-from gmpy import mpz
+from gmpy2 import mpz
 BNOC_TRACE = 0xc008b508
 Trace_len = 144
 struct_traceData = '@ L I I 16I 16I'
@@ -415,7 +415,7 @@ if __name__ == '__main__':
         base = int(tlpfirst[0:16],16)
         base = int(tlpfirst[0:8],16)
     else:
-        fd = open(devfilenames[0], 'rw')
+        fd = open(devfilenames[0], 'w')
         try:
             while 1:
                 buf = fcntl.ioctl(fd, PCIE_CHANGE_ENTRY, ' ' * ChangeEntry_len)
@@ -441,7 +441,7 @@ if __name__ == '__main__':
             buf = fcntl.ioctl(fd, BNOC_GET_TLP, ' ' * Tlp_len)
             foo = ''
             for x in buf:
-                foo = "%02x" % ord( x ) + foo
+                foo = "%02x" % x + foo
             tlplog.append(foo)
         fcntl.ioctl(fd, BNOC_ENABLE_TRACE, 1)
         #for foo in tlplog:

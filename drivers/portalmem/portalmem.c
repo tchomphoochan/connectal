@@ -49,6 +49,8 @@
 #define DRIVER_NAME "portalmem"
 #define DRIVER_DESCRIPTION "Memory management between HW and SW processes"
 
+MODULE_IMPORT_NS(DMA_BUF);
+
 static struct miscdevice miscdev;
 
 static void free_buffer_page(struct page *page, unsigned int order)
@@ -320,21 +322,58 @@ pa_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 #endif
 }
 
+#ifdef DMAARGS
+	#error "DMAARGS is expected not to be defined. Modify this code to use other names."
+#endif
+#ifdef DMABUFMAP_T
+	#error "DMABUFMAP_T is expected not to be defined. Modify this code to use other names."
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0))
+        #define DMAARGS 0, 0, 0
+#else
+        #define DMAARGS 0
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0))
+#elif (LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0))
+        #define DMABUFMAP_T struct dma_buf_map
+#else
+        #define DMABUFMAP_T struct iosys_map
+#endif
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0))
 static void *pa_dma_buf_vmap(struct dma_buf *dmabuf)
 {
         struct pa_buffer *buffer = dmabuf->priv;
-        pa_dma_buf_begin_cpu_access(dmabuf,
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,6,0))
-                                    0, 0,
-#endif
-                                    0);
+        pa_dma_buf_begin_cpu_access(dmabuf, DMAARGS);
         return buffer->vaddr;
 }
+#else
+static int pa_dma_buf_vmap(struct dma_buf *dmabuf, DMABUFMAP_T *map)
+{
+        struct pa_buffer *buffer = dmabuf->priv;
+        pa_dma_buf_begin_cpu_access(dmabuf, DMAARGS);
+        map->is_iomem = 0;
+        map->vaddr = buffer->vaddr;
+        return 0;
+}
+#endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0))
 static void pa_dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 {
         printk("%s: dmabuf %p vaddr %p\n", __FUNCTION__, dmabuf, vaddr);
 }
+#else
+static void pa_dma_buf_vunmap(struct dma_buf *dmabuf, DMABUFMAP_T *map)
+{
+        printk("%s: dmabuf %p vaddr %p\n", __FUNCTION__, dmabuf, map->vaddr);
+}
+#endif
+
+#undef DMABUFMAP_T
+#undef DMAARGS
 
 
 static struct dma_buf_ops dma_buf_ops = {
@@ -354,7 +393,7 @@ static struct dma_buf_ops dma_buf_ops = {
         .map_atomic       = pa_dma_buf_kmap,
         .unmap_atomic     = pa_dma_buf_kunmap,
 #endif
-#if !(defined(RHEL_MAJOR) && RHEL_MAJOR >= 8)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0)) && !(defined(RHEL_MAJOR) && RHEL_MAJOR >= 8)
         .map              = pa_dma_buf_kmap,
         .unmap            = pa_dma_buf_kunmap,
 #endif
