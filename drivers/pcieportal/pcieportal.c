@@ -40,8 +40,8 @@
 #include <linux/poll.h>         /* poll_table, etc. */
 #include <asm/uaccess.h>        /* copy_to_user, copy_from_user */
 #include <linux/dma-buf.h>
-// #include <linux/dma-mapping.h>
-// #include <linux/dma-direction.h>
+#include <linux/dma-mapping.h>
+#include <linux/dma-direction.h>
 #include <linux/pci_regs.h>
 #include "driverversion.h"
 

@@ -187,8 +187,8 @@ void* PortalPoller::event(void)
     if (rc < 0)
         fprintf(stderr, "[%s:%d] read error %d\n", __FUNCTION__, __LINE__, errno);
     for (int i = 0; i < numWrappers; i++) {
-        // if (!portal_wrappers)
-        //     fprintf(stderr, "Poller: No portal_instances revents=%d\n", portal_fds[i].revents);
+        if (!portal_wrappers)
+             fprintf(stderr, "Poller: No portal_instances revents=%d\n", portal_fds[i].revents);
         Portal *instance = portal_wrappers[i];
         if (trace_poller)
             fprintf(stderr, "Poller: event tile %d fpga%d fd %d handler %p parent %p\n",
