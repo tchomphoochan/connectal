@@ -439,10 +439,7 @@ if __name__ == '__main__':
         while counter > 0:
             counter = counter - 1
             buf = fcntl.ioctl(fd, BNOC_GET_TLP, ' ' * Tlp_len)
-            foo = ''
-            for x in buf:
-                foo = "%02x" % x + foo
-            tlplog.append(foo)
+            tlplog.append(buf[::-1].hex())
         fcntl.ioctl(fd, BNOC_ENABLE_TRACE, 1)
         #for foo in tlplog:
         #    print foo
