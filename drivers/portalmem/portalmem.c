@@ -49,7 +49,11 @@
 #define DRIVER_NAME "portalmem"
 #define DRIVER_DESCRIPTION "Memory management between HW and SW processes"
 
-MODULE_IMPORT_NS(DMA_BUF);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,13,0)
+        MODULE_IMPORT_NS(DMA_BUF);
+#else
+        MODULE_IMPORT_NS("DMA_BUF");
+#endif
 
 static struct miscdevice miscdev;
 
@@ -173,6 +177,13 @@ static void llshow_pte(struct mm_struct *mm, unsigned long addr)
         printk("\n");
 }
 #endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,13,0)
+      #define F_REFCNT f_count.counter
+#else
+      #define F_REFCNT f_ref.refcnt.counter
+#endif
+
 static int pa_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 {
         struct pa_buffer *buffer = dmabuf->priv;
@@ -184,7 +195,7 @@ static int pa_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
         /* Fill in vma_ops::access(), so that gdb print command works correctly */
         vma->vm_ops = &custom_vm_ops;
         vma->vm_private_data = buffer;
-        printk("pa_dma_buf_mmap %p %ld\n", (dmabuf->file), (unsigned long)dmabuf->file->f_count.counter);
+        printk("pa_dma_buf_mmap %p %ld\n", (dmabuf->file), (unsigned long)dmabuf->file->F_REFCNT);
         if (!buffer->cached) {
                 // pgprot_writecombine must be disabled so that ld/strex work correctly on arm (in C: __gnu_cxx::__exchange_and_add )
                 // however, that currently breaks connectal examples. Jamey 10/2014
@@ -237,7 +248,7 @@ static int pa_dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 static void pa_dma_buf_release(struct dma_buf *dmabuf)
 {
         struct pa_buffer *buffer = dmabuf->priv;
-        printk("PortalAlloc::pa_dma_buf_release %p %ld\n", (dmabuf->file), (unsigned long)dmabuf->file->f_count.counter);
+        printk("PortalAlloc::pa_dma_buf_release %p %ld\n", (dmabuf->file), (unsigned long)dmabuf->file->F_REFCNT);
         pa_buffer_free(buffer);
 }
 
@@ -542,7 +553,7 @@ int portalmem_dmabuffer_create(PortalAlloc portalAlloc)
 #endif
                         if (IS_ERR(dmabuf))
                                 pa_buffer_free(buffer);
-                        printk("pa_get_dma_buf fmem=%p count=%ld\n", dmabuf->file, (unsigned long)dmabuf->file->f_count.counter);
+                        printk("pa_get_dma_buf fmem=%p count=%ld\n", dmabuf->file, (unsigned long)dmabuf->file->F_REFCNT);
                         return_fd = dma_buf_fd(dmabuf, O_CLOEXEC);
                         if (return_fd < 0)
                                 dma_buf_put(dmabuf);

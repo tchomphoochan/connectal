@@ -297,7 +297,12 @@ static long pcieportal_ioctl(struct file *filp, unsigned int cmd, unsigned long 
                 list_for_each_safe(pmlist, n, &this_portal->pmlist) {
                         struct pmentry *pmentry = list_entry(pmlist, struct pmentry, pmlist);
                         if (pmentry->id == id) {
-                                printk("%s:%d releasing portalmem id=%d fmem=%p count=%ld\n", __FUNCTION__, __LINE__, id, pmentry->fmem, (unsigned long)pmentry->fmem->f_count.counter);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,13,0)
+    #define F_REFCNT f_count.counter
+#else
+    #define F_REFCNT f_ref.refcnt.counter
+#endif
+                                printk("%s:%d releasing portalmem id=%d fmem=%p count=%ld\n", __FUNCTION__, __LINE__, id, pmentry->fmem, (unsigned long)pmentry->fmem->F_REFCNT);
                                 fput(pmentry->fmem);
                                 list_del(&pmentry->pmlist);
                                 kfree(pmentry);
